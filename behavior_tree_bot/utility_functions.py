@@ -1,5 +1,6 @@
 from functools import *
 from typing import List
+import logging
 
 from planet_wars import PlanetWars, Fleet, Planet
 
@@ -88,9 +89,39 @@ def get_attacking_fleets(state: PlanetWars, planet_id: int) -> List[Fleet]:
         List[Fleet]: A list of fleets that are attacking the planet. Includes both ally and enemy fleets depending on planet owner.
     """
     owner = state.planets[planet_id].owner
-    ally_fleets = state.my_fleets() if owner == 1 else state.enemy_fleets() if owner == 2 else state.my_fleets().extend(state.enemy_fleets())
+    if owner == 2:
+        ally_fleets = state.my_fleets()
+    if owner == 1:
+        ally_fleets = state.enemy_fleets()
+    else:
+        dupl_fleets = state.my_fleets()
+        dupl_fleets.extend(state.enemy_fleets())
+        ally_fleets = dupl_fleets
     attacking_fleets = [fleet for fleet in ally_fleets if fleet.destination_planet == planet_id]
     return attacking_fleets
+
+def get_defending_fleets(state: PlanetWars, planet_id: int) -> List[Fleet]:
+    """
+    Returns a list of the ally fleets currently defending the given planet.
+
+    Parameters:
+        state (PlanetWars): The curretn game state
+        planet_id (int): The ID of the planet
+    
+    Returns:
+        List[Fleet]: A list of fleets that are defending the planet.
+    """
+    owner = state.planets[planet_id].owner
+    if owner == 1:
+        ally_fleets = state.my_fleets()
+    if owner == 2:
+        ally_fleets = state.enemy_fleets()
+    else:
+        dupl_fleets = state.my_fleets()
+        dupl_fleets.extend(state.enemy_fleets())
+        ally_fleets = dupl_fleets
+    defending_fleets = [fleet for fleet in ally_fleets if fleet.destination_planet == planet_id]
+    return defending_fleets
 
 
 def get_nearest_planets(state: PlanetWars, planet_id: int, num_turns: int=float('INF'), player_id: int = None) -> List[Planet]:
@@ -188,3 +219,35 @@ def get_production_factor(state: PlanetWars, planet_id: int) -> float:
     planet = state.planets[planet_id]
     production_factor = planet.growth_rate / (planet.num_ships / 10 + 1)
     return production_factor
+
+def get_priority(state: PlanetWars, planet: Planet, attacker: Fleet):
+    """
+    Return a number representing the number of ships needed to defend the given planet. Takes into account:
+        - The soonest attacking force's number of ships, & how soon it'll arrive
+        - The number of ships on the target planet when the attacking force arrives
+        - The number of ships currently defending the planet
+        - How far away the nearest planet with sufficient troops is
+        - And if a defending fleet can't reach the planet in time, how many ships will need to be sent to overtake the enemy force.
+
+    Parameters:
+        state (PlanetWars): The current game state
+        planet (Planet): The planet being attacked
+    
+        Returns: 
+            int: The priority, AKA the number of ships needed to defend the planet
+            Planet: The planet that should defend the targeted planet
+    
+    """
+    priority = attacker.num_ships
+    priority -= forecast_ship_count(state, planet, attacker.turns_remaining) 
+    priority -= sum([fleet.num_ships for fleet in get_defending_fleets(state, planet.ID)])
+    #Current priority is the number of ships that will be needed to prevent the planet to be overtaken.
+    possibleDefenders = get_nearest_planets(state, planet.ID, player_id=1)
+    defender = possibleDefenders[0]
+    ind = 0
+    while defender.num_ships < priority: #Could potentially add a +20 or something like that if we want the defending planet to not totally be defenseless after.
+        ind+=1
+        if ind > len(possibleDefenders+1):
+            return 0, None
+        defender = possibleDefenders[ind]
+    return priority, defender
