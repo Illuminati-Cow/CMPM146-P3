@@ -18,24 +18,24 @@ def get_pinned_ships(state: PlanetWars, planet_id: int) -> int:
     return min(ship_count, attacking_ships)
 
 
-def get_free_ships(state: PlanetWars, planet_id: int, buffer_percentage: float = 1) -> int:
+def get_free_ships(state: PlanetWars, planet_id: int, percentage: float = 1) -> int:
     """
     Parameters:
         state (PlanetWars): The current game state
         planet_id (int): The ID of the planet
-        buffer_percentage (float): Exlcude a percentage of free ships from the total, perhaps to retain as a buffer.
+        percentage (float): Only include a percentage of the total free ships.
     
     Returns:
         int: The number of ships that are not pinned by an attacking force
     """
     # Remap values from 1-100 to 0-1
-    if buffer_percentage > 1:
+    if percentage > 1:
         buffer /= 100
     buffer = min(max(buffer, 0), 1)
     pinned_ships = get_pinned_ships(state, planet_id)
     total_ships = state.planets[planet_id].num_ships
     free_ships = total_ships - pinned_ships
-    free_ships *= buffer_percentage
+    free_ships *= percentage
     return max(free_ships, 0)
 
 
