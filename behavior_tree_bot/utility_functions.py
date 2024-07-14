@@ -23,14 +23,12 @@ def get_free_ships(state: PlanetWars, planet_id: int, percentage: float = 1) -> 
     Parameters:
         state (PlanetWars): The current game state
         planet_id (int): The ID of the planet
-        percentage (float): Only include a percentage of the total free ships.
+        percentage (float): Only include a percentage of the total free ships. [0-1]
     
     Returns:
         int: The number of ships that are not pinned by an attacking force
     """
-    # Remap values from 1-100 to 0-1
-    if percentage > 1:
-        buffer /= 100
+    percentage = min(max(percentage, 0), 1)
     buffer = min(max(buffer, 0), 1)
     pinned_ships = get_pinned_ships(state, planet_id)
     total_ships = state.planets[planet_id].num_ships
@@ -80,7 +78,7 @@ def forecast_ship_count(state: PlanetWars, planet: Planet, num_turns: int) -> in
     attacking_fleets = get_attacking_fleets(state, planet_id=planet.ID)
     arriving_fleets = [fleet for fleet in attacking_fleets if fleet.turns_remaining <= num_turns]
     arriving_fleets.sort(key=lambda fleet: fleet.turns_remaining)
-    first_arrival = arriving_fleets[0]
+    first_arrival = arriving_fleets[0].turns_remaining
 
     if (first_arrival >= num_turns and planet.owner == 0) or num_turns <= 0:
         return ship_count

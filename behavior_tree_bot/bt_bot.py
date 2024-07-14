@@ -19,7 +19,7 @@ from behavior_tree_bot.bt_nodes import *
 
 from planet_wars import PlanetWars, finish_turn
 
-blackboard = dict()
+blackboard = {}
 
 def get_blackboard() -> dict:
     return blackboard
@@ -27,7 +27,7 @@ def get_blackboard() -> dict:
 # You have to improve this tree or create an entire new one that is capable
 # of winning against all the 5 opponent bots
 def setup_behavior_tree():
-
+    assert blackboard is not None
     # Top-down construction of behavior tree
     root = Selector(name='High Level Ordering of Strategies')
 
@@ -63,13 +63,13 @@ def setup_behavior_tree():
                 ),
                 Sequence(name="Muster Sequence", child_nodes=[
                     PopFromStack(blackboard, "strongest_ally_planets", "muster_ally"),
-                    Check(lambda state, blackboard: get_free_ships(state, blackboard["muster_ally"], 0.1) > 0, blackboard),
+                    Check(lambda state, blackboard: get_free_ships(state, blackboard["muster_ally"]) > 0, blackboard),
                     Sequence([
                         SetVar(
                             "order", 
                             lambda state: \
                                 Order(
-                                    get_free_ships(state, blackboard["muster_ally"].ID, 0.65), 
+                                    get_free_ships(state, blackboard["muster_ally"].ID, muster_phaser_strength), 
                                     blackboard["muster_ally"].ID,
                                     blackboard['capture_target'].ID,
                                     state.distance(blackboard["muster_ally"].ID, blackboard['capture_target'].ID)
@@ -135,7 +135,7 @@ def do_turn(state):
 
 if __name__ == '__main__':
     logging.basicConfig(filename=__file__[:-3] + '.log', filemode='w', level=logging.DEBUG)
-
+    logging.log(logging.INFO, "Setting up behavior tree")
     behavior_tree = setup_behavior_tree()
     try:
         map_data = ''

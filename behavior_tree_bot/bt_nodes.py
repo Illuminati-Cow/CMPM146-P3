@@ -168,6 +168,10 @@ class Check(Node):
             except Exception as e:
                 logging.log(logging.ERROR, "check function has invalid signature")
                 return False
+        except Exception as e:
+            logging.log(logging.ERROR, "check function has unknown exception")
+            raise e
+            return False
             
 
     def __str__(self):
@@ -177,10 +181,10 @@ class Check(Node):
 class PushToStack(Node):
     def __init__(self, blackboard : dict, stack_name, item_key):
         self.blackboard = blackboard
-        assert self.blackboard, "Blackboard is None in PushToStack Constructor"
+        assert self.blackboard is not None, "Blackboard is None in PushToStack Constructor"
         self.stack_key = stack_name
         self.item_key = item_key
-    
+
     @log_execution
     def execute(self, state):
         item = self.blackboard.get(self.item_key, None)
@@ -195,7 +199,7 @@ class PushToStack(Node):
 class PopFromStack(Node):
     def __init__(self, blackboard : dict, stack_name, item_key):
         self.blackboard = blackboard
-        assert self.blackboard, "Blackboard is None in PushToStack Constructor"
+        assert self.blackboard is not None, "Blackboard is None in PushToStack Constructor"
         self.stack_key = stack_name
         self.item_key = item_key
     
@@ -209,7 +213,7 @@ class PopFromStack(Node):
 
 
 class SetVar(Node):
-    def __init__(self, var_key, value_function: function):
+    def __init__(self, var_key, value_function: callable):
         self.var_key = var_key
         self.value_function = value_function
 
