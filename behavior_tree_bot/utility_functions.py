@@ -18,18 +18,24 @@ def get_pinned_ships(state: PlanetWars, planet_id: int) -> int:
     return min(ship_count, attacking_ships)
 
 
-def get_free_ships(state: PlanetWars, planet_id: int) -> int:
+def get_free_ships(state: PlanetWars, planet_id: int, buffer_percentage: float = 1) -> int:
     """
     Parameters:
         state (PlanetWars): The current game state
         planet_id (int): The ID of the planet
+        buffer_percentage (float): Exlcude a percentage of free ships from the total, perhaps to retain as a buffer.
     
     Returns:
         int: The number of ships that are not pinned by an attacking force
     """
+    # Remap values from 1-100 to 0-1
+    if buffer_percentage > 1:
+        buffer /= 100
+    buffer = min(max(buffer, 0), 1)
     pinned_ships = get_pinned_ships(state, planet_id)
     total_ships = state.planets[planet_id].num_ships
     free_ships = total_ships - pinned_ships
+    free_ships *= buffer_percentage
     return max(free_ships, 0)
 
 
@@ -71,11 +77,21 @@ def forecast_ship_count(state: PlanetWars, planet: Planet, num_turns: int) -> in
         int: The forecasted ship count for the planet.
     """
     ship_count = planet.num_ships
-    if planet.owner == 0 or num_turns <= 0:
+    attacking_fleets = get_attacking_fleets(state, planet_id=planet.ID)
+    arriving_fleets = [fleet for fleet in attacking_fleets if fleet.turns_remaining <= num_turns]
+    arriving_fleets.sort(key=lambda fleet: fleet.turns_remaining)
+    first_arrival = arriving_fleets[0]
+
+    if (first_arrival >= num_turns and planet.owner == 0) or num_turns <= 0:
         return ship_count
-    ally_fleets = state.my_fleets() if planet.owner == 1 else state.enemy_fleets()
-    ship_count += planet.growth_rate * num_turns
-    ship_count += sum(fleet.num_ships for fleet in ally_fleets if fleet.destination_planet == planet.ID and fleet.turns_remaining <= num_turns)
+    
+    if planet.owner == 0:
+        ship_count += planet.growth_rate * num_turns - first_arrival
+    else:
+        ship_count += planet.growth_rate * num_turns
+    ally_ship_count = reduce(lambda fleet: fleet.num_ships, [f for f in arriving_fleets if f.owner == 1])
+    enemy_ship_count = reduce(lambda fleet: fleet.num_ships, [f for f in arriving_fleets if f.owner == 2])
+    ship_count += abs(ally_ship_count - enemy_ship_count)
     return ship_count
 
 
