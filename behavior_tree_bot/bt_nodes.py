@@ -44,6 +44,16 @@ class Composite(Node):
         return string
 
 
+class Decorator(Node):
+    def __init__(self, child_node):
+        self.child_node = child_node
+
+    def execute(self, state):
+        raise NotImplementedError
+
+    def __str__(self):
+        return self.__class__.__name__ + ': ' + str(self.child_node)
+
 ############################### Composite Nodes ##################################
 class Selector(Composite):
     @log_execution
@@ -66,15 +76,99 @@ class Sequence(Composite):
         else:  # for loop completed without failure; return success
             return True
 
-
-############################### Leaf Nodes ##################################
-class Check(Node):
-    def __init__(self, check_function):
-        self.check_function = check_function
+############################### Decorator Nodes ##################################
+class Inverter(Decorator):
+    def __init__(self, child_node):
+        self.child_node = child_node
 
     @log_execution
     def execute(self, state):
-        return self.check_function(state)
+        result = self.child_node.execute(state)
+        return not result
+
+    def __str__(self):
+        return self.__class__.__name__ + ': ' + str(self.child_node)
+
+
+class UntilFailure(Decorator):
+    def __init__(self, child_node):
+        self.child_node = child_node
+
+    @log_execution
+    def execute(self, state):
+        while True:
+            result = self.child_node.execute(state)
+            if not result:
+                return False
+
+    def __str__(self):
+        return self.__class__.__name__ + ': ' + str(self.child_node)
+    
+
+class DoNTimes(Decorator):
+    def __init__(self, child_node, n):
+        self.child_node = child_node
+        self.n = n
+        self.counter = 0
+
+    @log_execution
+    def execute(self, state):
+        while self.counter < self.n:
+            result = self.child_node.execute(state)
+            self.counter += 1
+            if not result:
+                return False
+        return True
+
+    def reset(self):
+        self.counter = 0
+
+    def __str__(self):
+        return self.__class__.__name__ + ': ' + str(self.child_node) + ' (n=' + str(self.n) + ')'
+    
+
+class Succeeder(Decorator):
+    def __init__(self, child_node):
+        self.child_node = child_node
+
+    @log_execution
+    def execute(self, state):
+        self.child_node.execute(state)
+        return True
+
+    def __str__(self):
+        return self.__class__.__name__ + ': ' + str(self.child_node)
+
+
+class Failer(Decorator):
+    def __init__(self, child_node):
+        self.child_node = child_node
+
+    @log_execution
+    def execute(self, state):
+        self.child_node.execute(state)
+        return False
+
+    def __str__(self):
+        return self.__class__.__name__ + ': ' + str(self.child_node)
+    
+############################### Leaf Nodes ##################################
+class Check(Node):
+    def __init__(self, check_function, blackboard=None):
+        self.check_function = check_function
+        self.blackboard = blackboard
+
+    @log_execution
+    def execute(self, state):
+        try:
+            return self.check_function(state)
+        except TypeError:
+            try:
+                return self.check_function(state, self.blackboard)
+            except Exception as e:
+                logging.log(logging.ERROR, "check function has invalid signature")
+                return False
+            
 
     def __str__(self):
         return self.__class__.__name__ + ': ' + self.check_function.__name__
@@ -115,7 +209,7 @@ class PopFromStack(Node):
 
 
 class SetVar(Node):
-    def __init__(self, var_key, value_function):
+    def __init__(self, var_key, value_function: function):
         self.var_key = var_key
         self.value_function = value_function
 

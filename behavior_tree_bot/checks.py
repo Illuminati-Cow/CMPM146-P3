@@ -45,3 +45,12 @@ def is_planet_stealable(state:PlanetWars, blackboard: dict) -> bool:
   
   return True
 
+
+def is_planet_weaker_than_our_strength(state: PlanetWars, blackboard: dict):
+    # TODO
+    return False
+
+
+def will_planet_be_captured(state: PlanetWars, blackboard: dict):
+    # TODO
+    return False
