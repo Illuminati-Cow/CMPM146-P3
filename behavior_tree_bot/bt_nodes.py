@@ -80,6 +80,51 @@ class Check(Node):
         return self.__class__.__name__ + ': ' + self.check_function.__name__
 
 
+class PushToStack(Node):
+    def __init__(self, blackboard : dict, stack_name, item_key):
+        self.blackboard = blackboard
+        assert self.blackboard, "Blackboard is None in PushToStack Constructor"
+        self.stack_key = stack_name
+        self.item_key = item_key
+    
+    @log_execution
+    def execute(self, state):
+        item = self.blackboard.get(self.item_key, None)
+        assert item is not None, "Item with key item_key in blackboard is not found"
+        if not item:
+            return False
+        if not self.stack_key in self.blackboard:
+            self.blackboard[self.stack_key] = []
+        self.blackboard[self.stack_key].append(item)
+
+
+class PopFromStack(Node):
+    def __init__(self, blackboard : dict, stack_name, item_key):
+        self.blackboard = blackboard
+        assert self.blackboard, "Blackboard is None in PushToStack Constructor"
+        self.stack_key = stack_name
+        self.item_key = item_key
+    
+    @log_execution
+    def execute(self, state):
+        stack = self.blackboard.get(self.stack_key, None)
+        assert isinstance(stack, list), f"Item with key stack_key in blackboard is not a list: {stack}"
+        if not isinstance(stack, list) or len(stack) == 0:
+            return False
+        self.blackboard[self.item_key] = stack.pop()
+
+
+class SetVar(Node):
+    def __init__(self, var_key, value_function):
+        self.var_key = var_key
+        self.value_function = value_function
+
+    @log_execution
+    def execute(self, state):
+        state[self.var_key] = self.value_function(state)
+        return True
+
+
 class Action(Node):
     def __init__(self, action_function):
         self.action_function = action_function
