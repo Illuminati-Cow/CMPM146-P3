@@ -89,8 +89,8 @@ def forecast_ship_count(state: PlanetWars, planet: Planet, num_turns: int) -> in
         ship_count += planet.growth_rate * num_turns - first_arrival
     else:
         ship_count += planet.growth_rate * num_turns
-    ally_ship_count = reduce(lambda fleet: fleet.num_ships, [f for f in arriving_fleets if f.owner == 1])
-    enemy_ship_count = reduce(lambda fleet: fleet.num_ships, [f for f in arriving_fleets if f.owner == 2])
+    ally_ship_count = reduce(lambda a, b: a + b.num_ships, [f for f in arriving_fleets if f.owner == 1], 0)
+    enemy_ship_count = reduce(lambda a, b: a + b.num_ships, [f for f in arriving_fleets if f.owner == 2], 0)
     ship_count += abs(ally_ship_count - enemy_ship_count)
     return ship_count
 
