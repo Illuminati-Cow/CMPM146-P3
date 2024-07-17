@@ -32,9 +32,17 @@ def setup_behavior_tree():
     root = Selector(name='High Level Ordering of Strategies')
 
     offensive_plan = Sequence(name='Offensive Strategy')
-    largest_fleet_check = Check(have_largest_fleet)
-    attack = Action(attack_weakest_enemy_planet)
-    offensive_plan.child_nodes = [largest_fleet_check, attack]
+    # TEST REMOVE SUCCEEDER!!!!!!!!!!!! 
+    largest_fleet_check = Succeeder(Check(have_largest_fleet))
+    # Out of order so that it works
+    capture_sequence = Sequence(name="Capture Behavior")
+    attack = capture_sequence
+    # attack = Action(attack_weakest_enemy_planet)
+    offensive_plan.child_nodes = [
+        largest_fleet_check,
+        SetVar(blackboard, "capture_target", lambda state: get_weakest_planets(state, 2)[0]),
+        attack
+    ]
 
     spread_sequence = Sequence(name='Spread Strategy')
     neutral_planet_check = Check(if_neutral_planet_available)
@@ -46,26 +54,28 @@ def setup_behavior_tree():
     defense_action = Action(defend_targeted_planets)
     defense_sequence.child_nodes = [defendable_planet_check, defense_action]
 
-    capture_sequence = Sequence(name="Capture Sequence")
     Order = namedtuple('Order', ['num_ships', 'source_id', 'dest_id', 'arrival_time'])
     muster_phaser_strength = 0.65
     capture_sequence.child_nodes = [
-        Check(lambda: blackboard.get("capture_target", None) is not None),
-        Sequence([
-            Sequence([
+        Inverter(IsVarNull(blackboard, "capture_target")),
+        Sequence(name="Capture Sequence", child_nodes=[
+            Sequence(name="Capturable Check", child_nodes=[
                 Check(is_planet_weaker_than_our_strength, blackboard),
-                Inverter(Check(will_planet_be_captured))
+                Inverter(Check(will_planet_be_captured_by_us, blackboard))
             ]),
             Sequence(name="Attack Sequence", child_nodes=[
-                SetVar("strongest_ally_planets", 
-                    lambda state: get_strongest_planets(state, 1, blackboard["capture_target"].ID).\
-                    sort(key=lambda a: a.num_ships, reverse=True)
+                SetVar(
+                    blackboard, 
+                    "strongest_ally_planets", 
+                    lambda state: get_strongest_planets(state, 1, blackboard["capture_target"].ID),
                 ),
                 Sequence(name="Muster Sequence", child_nodes=[
+                    Inverter(IsVarNull(blackboard, "strongest_ally_planets")),
                     PopFromStack(blackboard, "strongest_ally_planets", "muster_ally"),
-                    Check(lambda state, blackboard: get_free_ships(state, blackboard["muster_ally"]) > 0, blackboard),
-                    Sequence([
+                    Check(lambda state, blackboard: get_free_ships(state, blackboard["muster_ally"].ID) > 0, blackboard),
+                    Sequence(name="Setting Order Variables", child_nodes=[
                         SetVar(
+                            blackboard,
                             "order", 
                             lambda state: \
                                 Order(
@@ -76,10 +86,12 @@ def setup_behavior_tree():
                                 )
                         ),
                         SetVar(
+                            blackboard,
                             "attack_strength", 
                             lambda state: blackboard.get("attack_strength", 0) + blackboard["order"].num_ships
                         ),
                         SetVar(
+                            blackboard,
                             "attack_max_arrival_time", 
                             lambda state: max(blackboard.get("attack_max_arrival_time", 0), blackboard["order"].num_ships)
                         )
@@ -87,10 +99,12 @@ def setup_behavior_tree():
                     PushToStack(blackboard, "orders", "order")
                 ]),
                 Sequence(name="Order Sequence", child_nodes=[
-                    Check(lambda state: blackboard["attack_strength"] > \
-                            forecast_ship_count(state, blackboard["capture_target"], blackboard["attack_max_arrival_time"])
+                    Check(
+                        lambda state, blackboard: blackboard["attack_strength"] > \
+                            forecast_ship_count(state, blackboard["capture_target"], blackboard["attack_max_arrival_time"]),
+                        blackboard
                     ),
-                    UntilFailure(Sequence([
+                    UntilFailure(Sequence(name="Issue Order Sequence", child_nodes=[
                         PopFromStack(blackboard, "orders", "order"),
                         Action(lambda state: issue_order(state, blackboard["order"].source_id, blackboard["order"].dest_id, blackboard["order"].num_ships))
                     ]))
@@ -101,6 +115,7 @@ def setup_behavior_tree():
 
     steal_sequence = Sequence(name='Stealing Strategy')
     get_attacked_neutral_planets_stack = SetVar(
+        blackboard,
         "attacked_neutral_planet_stack", 
         lambda state: [np for np in get_attacked_planets(state) if np.owner == 0]
     )
@@ -120,11 +135,11 @@ def setup_behavior_tree():
     # continue_until_success
     capture_stealable_planet.child_nodes = [
         Check(is_planet_stealable, blackboard),
-        SetVar("capture_target", lambda: blackboard["attacked_neutral_planet"]),
+        SetVar(blackboard, "capture_target", lambda: blackboard["attacked_neutral_planet"]),
         capture_sequence
     ]
 
-    root.child_nodes = [offensive_plan, spread_sequence, defense_sequence, attack.copy()]
+    root.child_nodes = [offensive_plan, spread_sequence, defense_sequence]
 
     logging.info('\n' + root.tree_to_string())
     return root

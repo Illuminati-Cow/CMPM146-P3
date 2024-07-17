@@ -1,4 +1,5 @@
 from functools import reduce
+import logging
 
 from planet_wars import PlanetWars, Planet
 from utility_functions import *
@@ -46,11 +47,33 @@ def is_planet_stealable(state:PlanetWars, blackboard: dict) -> bool:
   return True
 
 
-def is_planet_weaker_than_our_strength(state: PlanetWars, blackboard: dict):
-    # TODO
-    return False
+def is_planet_weaker_than_our_strength(state: PlanetWars, blackboard: dict) -> bool:
+    # Param
+    # Only attack if the planet is weaker than 60% of our total strength
+    total_strength_percentage = 0.6
+    target = blackboard.get("capture_target", None)
+    if target is None:
+        logging.error("Capture Target is none in is_planet_weaker_than_our_strength check")
+        return False
+    total_strength = float(reduce(lambda a,b: a + b.num_ships, state.my_planets(), 0)) * total_strength_percentage
+    logging.info(f"Total Strength:{ total_strength}")
+    if target.num_ships > total_strength:
+        return False
+    return True
 
 
-def will_planet_be_captured(state: PlanetWars, blackboard: dict):
-    # TODO
+def will_planet_be_captured_by_us(state: PlanetWars, blackboard: dict):
+    target = blackboard.get("capture_target", None)
+    if target is None:
+        logging.error("Capture Target is none in is_planet_weaker_than_our_strength check")
+        return False
+    attacking_fleets = get_attacking_fleets(state, target.ID)
+    our_attacking_fleets = [fleet for fleet in attacking_fleets if fleet.owner == 1]
+    
+    if not our_attacking_fleets:
+        return False
+    
+    if forecast_planet_owner(state, target) == 1:
+        return True
+    
     return False

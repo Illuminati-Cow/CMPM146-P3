@@ -29,11 +29,12 @@ def get_free_ships(state: PlanetWars, planet_id: int, percentage: float = 1) -> 
         int: The number of ships that are not pinned by an attacking force
     """
     percentage = min(max(percentage, 0), 1)
-    buffer = min(max(buffer, 0), 1)
     pinned_ships = get_pinned_ships(state, planet_id)
     total_ships = state.planets[planet_id].num_ships
     free_ships = total_ships - pinned_ships
     free_ships *= percentage
+    free_ships = int(free_ships)
+    print(f"Free Ships on Planet {planet_id}: {free_ships}", file=open("log_test.txt", "w"), flush=True)
     return max(free_ships, 0)
 
 
@@ -92,6 +93,58 @@ def forecast_ship_count(state: PlanetWars, planet: Planet, num_turns: int) -> in
     ship_count += abs(ally_ship_count - enemy_ship_count)
     return ship_count
 
+
+def forecast_planet_owner(state: PlanetWars, planet: Planet) -> int:
+    """
+    Calculate the number of ships a planet will have in a number of turns.
+    This includes production and fleets in flight at the time of the function call.
+
+    Parameters:
+        planet (Planet): The planet to forecast.
+
+    Returns:
+        int: The forecasted ship count for the planet.
+    """
+    ship_count = planet.num_ships
+    current_owner = planet.owner
+    attacking_fleets = get_attacking_fleets(state, planet_id=planet.ID)
+    arriving_fleets = [fleet for fleet in attacking_fleets]
+    arriving_fleets.sort(key=lambda fleet: fleet.turns_remaining, reverse=True)
+
+    if not arriving_fleets:
+        return planet.owner
+    
+    last_arrival = arriving_fleets[0].turns_remaining
+    for turn in range(last_arrival):
+        ship_count += planet.growth_rate if current_owner != 0 else 0
+        fleets = []
+        while arriving_fleets and arriving_fleets[-1].turns_remaining == turn:
+            fleets.append(arriving_fleets.pop())
+        ally_ship_count = reduce(lambda a, b: a + b.num_ships, [f for f in fleets if f.owner == 1], 0)
+        enemy_ship_count = reduce(lambda a, b: a + b.num_ships, [f for f in fleets if f.owner == 2], 0)
+        match planet.owner:
+            case 0:
+                ship_count -= abs(ally_ship_count - enemy_ship_count)
+                if ship_count > 0:
+                    continue
+                elif ally_ship_count > enemy_ship_count:
+                    current_owner = 1
+                else:
+                    current_owner = 2
+            case 1:
+                ship_count += ally_ship_count
+                ship_count -= enemy_ship_count
+                if ship_count < 0:
+                    ship_count = abs(ship_count)
+                    current_owner = 2
+            case 2:
+                ship_count += enemy_ship_count
+                ship_count -= ally_ship_count
+                if ship_count < 0:
+                    ship_count = abs(ship_count)
+                    current_owner = 1
+
+    return current_owner
 
 def get_attacking_fleets(state: PlanetWars, planet_id: int) -> List[Fleet]:
     """
