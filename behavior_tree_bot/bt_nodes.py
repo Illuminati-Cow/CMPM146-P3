@@ -193,7 +193,7 @@ class PushToStack(Node):
             return False
         if not self.stack_key in self.blackboard:
             self.blackboard[self.stack_key] = []
-        logging.info(f"Pushed item to stack {item}")
+        logging.info(f"Pushed item to stack {self.stack_key}: {item}")
         self.blackboard[self.stack_key].append(item)
         return True
 
@@ -211,7 +211,7 @@ class PopFromStack(Node):
         assert isinstance(stack, list), f"Item with key stack_key in blackboard is not a list: {stack}"
         if not isinstance(stack, list) or len(stack) == 0:
             return False
-        logging.info(f"Popped from stack {stack[-1]}")
+        logging.info(f"Popped from stack {self.stack_key} value: {stack[-1]}")
         self.blackboard[self.item_key] = stack.pop()
         return True
 
@@ -225,6 +225,7 @@ class SetVar(Node):
     @log_execution
     def execute(self, state):
         self.blackboard[self.var_key] = self.value_function(state)
+        logging.info(f"Setting Variable {self.var_key} with value: {self.blackboard[self.var_key]}")
         return True
     
 

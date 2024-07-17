@@ -71,42 +71,51 @@ def setup_behavior_tree():
                 ),
                 Sequence(name="Muster Sequence", child_nodes=[
                     Inverter(IsVarNull(blackboard, "strongest_ally_planets")),
-                    PopFromStack(blackboard, "strongest_ally_planets", "muster_ally"),
-                    Check(lambda state, blackboard: get_free_ships(state, blackboard["muster_ally"].ID) > 0, blackboard),
-                    Sequence(name="Setting Order Variables", child_nodes=[
-                        SetVar(
-                            blackboard,
-                            "order", 
-                            lambda state: \
-                                Order(
-                                    get_free_ships(state, blackboard["muster_ally"].ID, muster_phaser_strength), 
-                                    blackboard["muster_ally"].ID,
-                                    blackboard['capture_target'].ID,
-                                    state.distance(blackboard["muster_ally"].ID, blackboard['capture_target'].ID)
+                    # Reset Values
+                    SetVar(blackboard, "attack_strength", lambda state: 0),
+                    SetVar(blackboard, "attack_max_arrival_time", lambda state: 0),
+                    UntilFailure(
+                        Sequence([
+                            PopFromStack(blackboard, "strongest_ally_planets", "muster_ally"),
+                            Check(lambda state, blackboard: get_free_ships(state, blackboard["muster_ally"].ID) > 0, blackboard),
+                            Sequence(name="Setting Order Variables", child_nodes=[
+                                SetVar(
+                                    blackboard,
+                                    "order", 
+                                    lambda state: \
+                                        Order(
+                                            get_free_ships(state, blackboard["muster_ally"].ID, muster_phaser_strength), 
+                                            blackboard["muster_ally"].ID,
+                                            blackboard['capture_target'].ID,
+                                            state.distance(blackboard["muster_ally"].ID, blackboard['capture_target'].ID)
+                                        )
+                                ),
+                                SetVar(
+                                    blackboard,
+                                    "attack_strength", 
+                                    lambda state: blackboard["attack_strength"] + blackboard["order"].num_ships
+                                ),
+                                SetVar(
+                                    blackboard,
+                                    "attack_max_arrival_time", 
+                                    lambda state: max(blackboard["attack_max_arrival_time"], blackboard["order"].arrival_time)
                                 )
-                        ),
-                        SetVar(
-                            blackboard,
-                            "attack_strength", 
-                            lambda state: blackboard.get("attack_strength", 0) + blackboard["order"].num_ships
-                        ),
-                        SetVar(
-                            blackboard,
-                            "attack_max_arrival_time", 
-                            lambda state: max(blackboard.get("attack_max_arrival_time", 0), blackboard["order"].num_ships)
-                        )
-                    ]),
-                    PushToStack(blackboard, "orders", "order")
+                            ]),
+                            PushToStack(blackboard, "orders", "order")
+                        ]),
+                    ),
                 ]),
                 Sequence(name="Order Sequence", child_nodes=[
-                    Check(
+                    # REMOVE SUCCEEDER TEST!!!!!!!!
+                    Succeeder(Check(
                         lambda state, blackboard: blackboard["attack_strength"] > \
                             forecast_ship_count(state, blackboard["capture_target"], blackboard["attack_max_arrival_time"]),
                         blackboard
-                    ),
+                    )),
                     UntilFailure(Sequence(name="Issue Order Sequence", child_nodes=[
                         PopFromStack(blackboard, "orders", "order"),
-                        Action(lambda state: issue_order(state, blackboard["order"].source_id, blackboard["order"].dest_id, blackboard["order"].num_ships))
+                        # REMOVE SUCCEEDER TEST!!!!!!!!
+                        Succeeder(Action(lambda state: issue_order(state, blackboard["order"].source_id, blackboard["order"].dest_id, blackboard["order"].num_ships))),
                     ]))
                 ])
             ])
