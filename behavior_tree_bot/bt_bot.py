@@ -170,7 +170,8 @@ def setup_behavior_tree():
     ]
 
     # root.child_nodes = [offensive_plan, spread_sequence, defense_sequence]
-    root.child_nodes = [offensive_plan, steal_sequence, spread_sequence, repeat_defense_strategy]
+    root.child_nodes = [offensive_plan, steal_sequence, spread_sequence, defense_sequence]
+    # root.child_nodes = [steal_sequence, spread_sequence, repeat_defense_strategy]
 
 
     logging.info('\n' + root.tree_to_string())

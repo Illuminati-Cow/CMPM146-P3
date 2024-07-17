@@ -29,7 +29,7 @@ def get_free_ships(state: PlanetWars, planet_id: int, percentage: float = 1) -> 
         int: The number of ships that are not pinned by an attacking force
     """
     percentage = min(max(percentage, 0), 1)
-    pinned_ships = get_pinned_ships(state, planet_id) + 20
+    pinned_ships = get_pinned_ships(state, planet_id)
     total_ships = state.planets[planet_id].num_ships
     free_ships = total_ships - pinned_ships
     free_ships *= percentage
@@ -79,15 +79,12 @@ def forecast_ship_count(state: PlanetWars, planet: Planet, num_turns: int) -> in
     ship_count = planet.num_ships
     attacking_fleets = get_attacking_fleets(state, planet_id=planet.ID)
     arriving_fleets = [fleet for fleet in attacking_fleets if fleet.turns_remaining <= num_turns]
-    logging.info("Test1")
     
     if not arriving_fleets:
         return ship_count + planet.growth_rate * num_turns
     
     arriving_fleets.sort(key=lambda fleet: fleet.turns_remaining)
     first_arrival = arriving_fleets[0].turns_remaining
-    logging.info("Test2")
-
     
     if (first_arrival >= num_turns and planet.owner == 0) or num_turns <= 0:
         return ship_count
@@ -99,8 +96,8 @@ def forecast_ship_count(state: PlanetWars, planet: Planet, num_turns: int) -> in
     ally_ship_count = reduce(lambda a, b: a + b.num_ships, [f for f in arriving_fleets if f.owner == 1], 0)
     enemy_ship_count = reduce(lambda a, b: a + b.num_ships, [f for f in arriving_fleets if f.owner == 2], 0)
     ship_count += abs(ally_ship_count - enemy_ship_count)
-    logging.info("Test3")
 
+    logging.info(f"UTILITY: Ship count acquired, {ship_count}")
     return ship_count
 
 
@@ -327,18 +324,19 @@ def get_priority(state: PlanetWars, planet: Planet, attacker: Fleet):
     priority -= planet.num_ships
     priority -= sum([fleet.num_ships for fleet in get_defending_fleets(state, planet.ID)])
     #Current priority is the number of ships that will be needed to prevent the planet to be overtaken.
-    possibleDefenders = [planet2 for planet2 in get_nearest_planets(state, planet.ID, 50, 1) if sum([fleet.num_ships for fleet in get_attacking_fleets(state, planet2.ID)]) < planet2.num_ships]
+    possibleDefenders = get_nearest_planets(state, planet.ID, player_id=1)
     if len(possibleDefenders) <= 0:
         logging.info("UTILITY: No possible defenders")
         return 0, None
     defender = possibleDefenders[0]
     ind = 0
-    while defender.num_ships < priority/4:
+    while defender.num_ships < priority or has_sent_fleet(state, defender, planet):
         ind+=1
         if ind > len(possibleDefenders)-1:
             logging.info("UTILITY: No planet has enough troops to defend")
             return 0, None
         defender = possibleDefenders[ind]
+    logging.info(f"UTILITY: Got priority of {priority}")
     return priority, defender
 
 # def get_most_valuable_neutral_planet(state:PlanetWars):

@@ -36,9 +36,9 @@ def planet_in_danger(state): #Do we need to send defenders to any planets?
         # logging.info(totalDefenders)
         if totalAttackers > totalDefenders:
             logging.info("CHECK: Found a planet in danger!")
-            # logging.info(totalAttackers)
-            # logging.info(totalDefenders)
-            # logging.info(planet.num_ships)
+            logging.info("Attackers: "+ str(totalAttackers))
+            logging.info("Defenders: "+ str(totalDefenders))
+            logging.info(planet.num_ships)
             return True
     logging.info("CHECK: No planets in danger")
     return False

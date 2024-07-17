@@ -102,6 +102,7 @@ def spread_to_weakest_neutral_planet(state):
         return issue_order(state, strongest_planet.ID, weakest_planet.ID, floor(strongest_planet.num_ships / 4))
 
 def defend_targeted_planets(state):
+    logging.info('FUNCTION: Running function: Defend Targeted Planets')
     # (1) Get the planet that is closest to being overtaken and is not actively being defended.
     planetInDanger = None
     highestPriority = 0
@@ -124,9 +125,9 @@ def defend_targeted_planets(state):
         logging.info("FUNCTION: Defense failed! No planet is able to defend!")
         return False
     logging.info("FUNCTION: Defense success! Sending reinforcements to our ally, Commander!")
-    logging.info(currentDefender.num_ships)
-    logging.info(planetInDanger.num_ships)
-    logging.info(highestPriority)
+    logging.info(f"Defender's ships: {currentDefender.num_ships}")
+    logging.info(f"Planet in danger's ships: {planetInDanger.num_ships}")
+    logging.info(f"Priority: {highestPriority}")
     return issue_order(state, currentDefender.ID, planetInDanger.ID, floor(currentDefender.num_ships/4))
 
 def issue_capture_order(state):
