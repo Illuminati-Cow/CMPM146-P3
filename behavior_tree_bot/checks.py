@@ -7,7 +7,6 @@ from utility_functions import *
 def if_neutral_planet_available(state):
     return any(state.neutral_planets())
 
-
 def have_largest_fleet(state):
     return sum(planet.num_ships for planet in state.my_planets()) \
              + sum(fleet.num_ships for fleet in state.my_fleets()) \
@@ -15,7 +14,38 @@ def have_largest_fleet(state):
              + sum(fleet.num_ships for fleet in state.enemy_fleets())
 
 def multiple_planets_available(state):
-    return len(state.my_planets()) > 2
+    return len(state.my_planets()) >= 2
+
+def planet_in_danger(state): #Do we need to send defenders to any planets?
+    logging.info("CHECK: Is there a planet in danger?")
+    for planet in get_attacked_planets(state):
+        attackers = get_attacking_fleets(state, planet.ID)
+        totalAttackers = 0
+        for fleet in attackers:
+            totalAttackers += fleet.num_ships
+        defenders = get_defending_fleets(state, planet.ID)
+        totalDefenders = 0
+        for fleet in defenders:
+            totalDefenders += fleet.num_ships
+        logging.info(totalAttackers)
+        logging.info(totalDefenders)
+        if totalAttackers > totalDefenders:
+            logging.info("CHECK: Found a planet in danger!")
+            logging.info(planet.num_ships)
+            return True
+    logging.info("CHECK: No planets in danger")
+    return False
+
+def steal_stack_not_empty(state:PlanetWars, blackboard: dict) -> bool:
+    logging.info("CHECK: Checking steal stack")
+    if "attacked_neutral_planet_stack" not in blackboard:
+        logging.info("CHECK: Steal stack key not found in blackboard")
+        return False
+    if blackboard["attacked_neutral_planet_stack"] is []:
+        logging.info("CHECK: Blackboard stack is empty!")
+        return False
+    logging.info("CHECK: Success, steal stack contains planets")
+    return True
 
 def is_planet_stealable(state:PlanetWars, blackboard: dict) -> bool:
   assert blackboard.get("attacked_neutral_planet", None) is not None, "Planet to steal is none in check function"

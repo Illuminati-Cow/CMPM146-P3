@@ -184,9 +184,7 @@ def get_defending_fleets(state: PlanetWars, planet_id: int) -> List[Fleet]:
     if owner == 2:
         ally_fleets = state.enemy_fleets()
     else:
-        dupl_fleets = state.my_fleets()
-        dupl_fleets.extend(state.enemy_fleets())
-        ally_fleets = dupl_fleets
+        return [] #A neutral planet will have no defenders, only attackers :(
     defending_fleets = [fleet for fleet in ally_fleets if fleet.destination_planet == planet_id]
     return defending_fleets
 
@@ -287,6 +285,15 @@ def get_production_factor(state: PlanetWars, planet_id: int) -> float:
     production_factor = planet.growth_rate / (planet.num_ships / 10 + 1)
     return production_factor
 
+def has_sent_fleet(state: PlanetWars, source_planet: Planet, destination_planet: Planet) -> bool:
+    #Determine if source_planet has sent a fleet to destination_planet.
+    matching_fleets = []
+    if source_planet.owner is destination_planet.owner:
+        matching_fleets = [fleet for fleet in get_defending_fleets(state, destination_planet.ID) if fleet.source_planet is source_planet]
+    else:
+        matching_fleets = [fleet for fleet in get_attacking_fleets(state, destination_planet.ID) if fleet.source_planet is source_planet]
+    return len(matching_fleets) > 0
+
 def get_priority(state: PlanetWars, planet: Planet, attacker: Fleet):
     """
     Return a number representing the number of ships needed to defend the given planet. Takes into account:
@@ -312,9 +319,11 @@ def get_priority(state: PlanetWars, planet: Planet, attacker: Fleet):
     possibleDefenders = get_nearest_planets(state, planet.ID, player_id=1)
     defender = possibleDefenders[0]
     ind = 0
-    while defender.num_ships < priority: #Could potentially add a +20 or something like that if we want the defending planet to not totally be defenseless after.
+    while defender.num_ships < priority or has_sent_fleet(state, defender, planet):
         ind+=1
-        if ind > len(possibleDefenders+1):
+        if ind > len(possibleDefenders)-1:
             return 0, None
         defender = possibleDefenders[ind]
     return priority, defender
+
+# def is_under_attack(state: PlanetWars)

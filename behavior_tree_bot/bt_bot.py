@@ -51,8 +51,10 @@ def setup_behavior_tree():
 
     defense_sequence = Sequence(name='Defensive Strategy')
     defendable_planet_check = Check(multiple_planets_available)
+    defense_needed_check = Check(planet_in_danger)
     defense_action = Action(defend_targeted_planets)
-    defense_sequence.child_nodes = [defendable_planet_check, defense_action]
+    defense_sequence.child_nodes = [defendable_planet_check, defense_needed_check, defense_action]
+    repeat_defense_strategy = UntilFailure(defense_sequence)
 
     Order = namedtuple('Order', ['num_ships', 'source_id', 'dest_id', 'arrival_time'])
     muster_phaser_strength = 0.65
@@ -115,7 +117,8 @@ def setup_behavior_tree():
                     UntilFailure(Sequence(name="Issue Order Sequence", child_nodes=[
                         PopFromStack(blackboard, "orders", "order"),
                         # REMOVE SUCCEEDER TEST!!!!!!!!
-                        Succeeder(Action(lambda state: issue_order(state, blackboard["order"].source_id, blackboard["order"].dest_id, blackboard["order"].num_ships))),
+                        Action(attack_weakest_enemy_planet)
+                        # Succeeder(Action(lambda state: issue_order(state, blackboard["order"].source_id, blackboard["order"].dest_id, blackboard["order"].num_ships))),
                     ]))
                 ])
             ])
@@ -123,32 +126,40 @@ def setup_behavior_tree():
     ]
 
     steal_sequence = Sequence(name='Stealing Strategy')
+    #Get a stack of neutral planets that are in danger of being taken by the enemy
     get_attacked_neutral_planets_stack = SetVar(
         blackboard,
-        "attacked_neutral_planet_stack", 
-        lambda state: [np for np in get_attacked_planets(state) if np.owner == 0]
+        "attacked_neutral_planet_stack", #Key: stack name
+        lambda state: list([np for np in get_attacked_planets(state) if np.owner == 0]) #Value: array of every neutral planet under siege. Make sure this is a fucking list please!!
     )
-    iterate_through_neutral_stack = Sequence()
-    capture_stealable_planet = Sequence()
-    continue_until_success = Inverter(capture_stealable_planet)
+    iterate_through_neutral_stack = Sequence(name='Stealing Iteration') #Iterate through the stack of planets, as a sequence.
+    capture_stealable_planet = Sequence(name='Steal Sequence') #Check and then act to capture each planet in the stack.
+    # continue_until_success = Inverter(capture_stealable_planet) #This also confuses me a bit. The UntilFailure makes sense to me. But the inverter is a bit... uhh? I'm replacing it for now and seeing if that benefits anything.
     try_until_steal = UntilFailure(iterate_through_neutral_stack)
+    #The actual Steal Sequence itself is pretty simple at a root level. Get a stack of potentially vulnerable planets, and try to capture them.
     steal_sequence.child_nodes = [
         get_attacked_neutral_planets_stack,
         try_until_steal
     ]
     # try_until_success
     iterate_through_neutral_stack.child_nodes = [
-        PopFromStack(blackboard, "attacked_netural_planets", "attacked_neutral_planet"),
-        continue_until_success
+        #Pops top item from attacked_neutral_planet stack into a blackboard element of attacked_neutral_planet.
+        # Check(steal_stack_not_empty, blackboard),
+        PopFromStack(blackboard, "attacked_neutral_planet_stack", "attacked_neutral_planet"), #Is this meant to be attacked_neutral_planet_stack? I changed it.
+        # continue_until_success
+        capture_stealable_planet
     ]
     # continue_until_success
     capture_stealable_planet.child_nodes = [
-        Check(is_planet_stealable, blackboard),
-        SetVar(blackboard, "capture_target", lambda: blackboard["attacked_neutral_planet"]),
-        capture_sequence
+        Check(is_planet_stealable, blackboard), #Check if the planet is valid to be stolen. If not, we dip to the next iteration.
+        # SetVar(blackboard, "capture_target", lambda: blackboard["attacked_neutral_planet"]), #Setting capture_target to the function in attacked_neutral_planet... which is?
+        UntilFailure(Action(steal_targeted_neutral_planet)) #For now, just try to steal it until we can't anymore.
+        # capture_sequence
     ]
 
-    root.child_nodes = [offensive_plan, spread_sequence, defense_sequence]
+    # root.child_nodes = [offensive_plan, spread_sequence, defense_sequence]
+    root.child_nodes = [steal_sequence, spread_sequence, repeat_defense_strategy] #Temp, because I haven't evaluated the full offensive plan yet.
+
 
     logging.info('\n' + root.tree_to_string())
     return root
