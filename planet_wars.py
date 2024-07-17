@@ -6,6 +6,10 @@ from collections import namedtuple
 from sys import stdout
 import logging
 
+blackboard = {}
+
+def get_blackboard() -> dict:
+    return blackboard
 
 def issue_order(state, source_planet_ID, destination_planet_ID, fleet_num_ships):
     # Check for legal order

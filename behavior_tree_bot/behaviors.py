@@ -1,8 +1,7 @@
 import sys
 sys.path.insert(0, '../')
-from planet_wars import issue_order
+from planet_wars import issue_order, get_blackboard
 from utility_functions import *
-from bt_bot import blackboard #I think I can do this?
 
 def attack_weakest_enemy_planet(state):
     logging.info('FUNCTION: Running function: Attack Weakest Enemy Planet')
@@ -40,6 +39,7 @@ def attack_weakest_enemy_planet(state):
         return issue_order(state, strongest_planet.ID, weakest_planet.ID, strongest_planet.num_ships / 2)
     
 def steal_targeted_neutral_planet(state):
+    blackboard = get_blackboard()
     logging.info('FUNCTION: Running function: Steal Targeted Neutral Planet')
     if "attacked_neutral_planet" not in blackboard:
         logging.info('FUNCTION: Steal failed! No planet currently targeted')
@@ -125,3 +125,13 @@ def defend_targeted_planets(state):
     logging.info(planetInDanger.num_ships)
     logging.info(highestPriority)
     return issue_order(state, currentDefender.ID, planetInDanger.ID, currentDefender.num_ships/2)
+
+def issue_capture_order(state):
+    blackboard = get_blackboard()
+    order = blackboard.get("order", None)
+    if "order" is None:
+        logging.error("Order is not set in issue_capture_order")
+        return False
+    result = issue_order(state, order.source_id, order.dest_id, order.num_ships)
+    logging.info(f"Order issued?: {result}, {order}")
+    return result
