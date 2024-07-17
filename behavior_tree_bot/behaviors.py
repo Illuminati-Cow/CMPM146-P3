@@ -2,6 +2,7 @@ import sys
 sys.path.insert(0, '../')
 from planet_wars import issue_order, get_blackboard
 from utility_functions import *
+from math import floor
 
 def attack_weakest_enemy_planet(state):
     logging.info('FUNCTION: Running function: Attack Weakest Enemy Planet')
@@ -36,7 +37,7 @@ def attack_weakest_enemy_planet(state):
     else:
         # (4) Send half the ships from my strongest planet to the weakest enemy planet.
         logging.info('FUNCTION: Attack success!')
-        return issue_order(state, strongest_planet.ID, weakest_planet.ID, strongest_planet.num_ships / 2)
+        return issue_order(state, strongest_planet.ID, weakest_planet.ID, floor(strongest_planet.num_ships / 2))
     
 def steal_targeted_neutral_planet(state):
     blackboard = get_blackboard()
@@ -64,12 +65,12 @@ def steal_targeted_neutral_planet(state):
         logging.info('FUNCTION: Steal failed! No planets close enough to save that have already sent troops!') #This is our big cutoff. If every planet within range has sent a defender, stop the steal sequence here.
         return False
     logging.info('FUNCTION: Steal success! Sending planet to attempt to snatch the planet from under their noses, Commander!')
-    return issue_order(state, potential_thieves[0].ID, targeted_planet.ID, potential_thieves[0].num_ships/4)
+    return issue_order(state, potential_thieves[0].ID, targeted_planet.ID, floor(potential_thieves[0].num_ships/4))
 
 def spread_to_weakest_neutral_planet(state):
     logging.info('FUNCTION: Running function: Spread To Weakest Neutral Planet')
     # (1) Find my strongest planet.
-    strongest_planet = max(state.my_planets(), key=lambda p: p.num_ships, default=None)
+    strongest_planet = max([planet for planet in state.my_planets() if get_attacking_fleets(state, planet.ID) is []], key=lambda p: p.num_ships, default=None)
 
     #Error check.
     if strongest_planet is None: 
@@ -98,7 +99,7 @@ def spread_to_weakest_neutral_planet(state):
         # (4) Send half the ships from my strongest planet to the weakest enemy planet.
         logging.info('FUNCTION: Spread success! Number of ships on target planet:')
         logging.info(weakest_planet.num_ships)
-        return issue_order(state, strongest_planet.ID, weakest_planet.ID, strongest_planet.num_ships / 2)
+        return issue_order(state, strongest_planet.ID, weakest_planet.ID, floor(strongest_planet.num_ships / 4))
 
 def defend_targeted_planets(state):
     # (1) Get the planet that is closest to being overtaken and is not actively being defended.
@@ -117,14 +118,16 @@ def defend_targeted_planets(state):
             highestPriority = priority
             planetInDanger = planet
             currentDefender = defender
+    if highestPriority < 0:
+        logging.info("FUNCTION: Defense failed! Highest priority is less than zero!")
     if highestPriority < 0 or planetInDanger is None:
-        logging.info("FUNCTION: Defense failed! No planet needs defending!")
+        logging.info("FUNCTION: Defense failed! No planet is able to defend!")
         return False
     logging.info("FUNCTION: Defense success! Sending reinforcements to our ally, Commander!")
     logging.info(currentDefender.num_ships)
     logging.info(planetInDanger.num_ships)
     logging.info(highestPriority)
-    return issue_order(state, currentDefender.ID, planetInDanger.ID, currentDefender.num_ships/2)
+    return issue_order(state, currentDefender.ID, planetInDanger.ID, floor(currentDefender.num_ships/4))
 
 def issue_capture_order(state):
     blackboard = get_blackboard()

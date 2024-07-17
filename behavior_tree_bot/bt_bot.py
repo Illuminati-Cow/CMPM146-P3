@@ -114,18 +114,20 @@ def setup_behavior_tree():
     offensive_plan = Sequence(name='Offensive Strategy')
     # TEST REMOVE SUCCEEDER!!!!!!!!!!!! 
     largest_fleet_check = Succeeder(Check(have_largest_fleet))
+    enemy_planets_available_check = Check(enemy_planets_available)
     # Out of order so that it works
     attack = capture_sequence
     # attack = Action(attack_weakest_enemy_planet)
     offensive_plan.child_nodes = [
         largest_fleet_check,
+        enemy_planets_available_check,
         SetVar(blackboard, "capture_target", lambda state: get_weakest_planets(state, 2)[0]),
         attack
     ]
 
     spread_sequence = Sequence(name='Spread Strategy')
     neutral_planet_check = Check(if_neutral_planet_available)
-    # spread_action = Action(spread_to_weakest_neutral_planet)
+    spread_action = Action(spread_to_weakest_neutral_planet)
     do_we_have_planets = Check(lambda state: len(state.my_planets()) > 0)
     set_target = SetVar(blackboard, "capture_target", lambda state: get_weakest_planets(state, 0, get_strongest_planets(state, 1)[0].ID)[0])
     spread_sequence.child_nodes = [neutral_planet_check, do_we_have_planets, set_target, capture_sequence]
@@ -168,7 +170,7 @@ def setup_behavior_tree():
     ]
 
     # root.child_nodes = [offensive_plan, spread_sequence, defense_sequence]
-    root.child_nodes = [steal_sequence] #Temp, because I haven't evaluated the full offensive plan yet.
+    root.child_nodes = [offensive_plan, steal_sequence, spread_sequence, repeat_defense_strategy]
 
 
     logging.info('\n' + root.tree_to_string())

@@ -17,10 +17,13 @@ def have_largest_fleet(state):
 def multiple_planets_available(state):
     return len(state.my_planets()) >= 2
 
+def enemy_planets_available(state):
+    return len(state.enemy_planets()) > 0
+
 def planet_in_danger(state): #Do we need to send defenders to any planets?
     logging.info("CHECK: Is there a planet in danger?")
     for planet in get_attacked_planets(state):
-        attackers = get_attacking_fleets(state, planet.ID)
+        attackers = [fleet for fleet in get_attacking_fleets(state, planet.ID) if fleet.owner is 2]
         totalAttackers = 0
         for fleet in attackers:
             totalAttackers += fleet.num_ships
@@ -28,11 +31,14 @@ def planet_in_danger(state): #Do we need to send defenders to any planets?
         totalDefenders = 0
         for fleet in defenders:
             totalDefenders += fleet.num_ships
-        logging.info(totalAttackers)
-        logging.info(totalDefenders)
+        totalDefenders += forecast_ship_count(state, planet, attackers[0].turns_remaining)
+        # logging.info(totalAttackers)
+        # logging.info(totalDefenders)
         if totalAttackers > totalDefenders:
             logging.info("CHECK: Found a planet in danger!")
-            logging.info(planet.num_ships)
+            # logging.info(totalAttackers)
+            # logging.info(totalDefenders)
+            # logging.info(planet.num_ships)
             return True
     logging.info("CHECK: No planets in danger")
     return False
@@ -104,6 +110,7 @@ def is_planet_weaker_than_our_strength(state: PlanetWars, blackboard: dict) -> b
     logging.info(f"Total Strength:{ total_strength}")
     if target.num_ships > total_strength:
         return False
+    logging.info("CHECK: Success, planet is weaker than us")
     return True
 
 
