@@ -136,11 +136,18 @@ def setup_behavior_tree():
     ]
 
     spread_sequence = Sequence(name='Spread Strategy')
-    neutral_planet_check = Check(if_neutral_planet_available)
-    spread_action = Action(spread_to_weakest_neutral_planet)
     do_we_have_planets = Check(lambda state: len(state.my_planets()) > 0)
-    set_target = SetVar(blackboard, "capture_target", lambda state: get_weakest_planets(state, 0, get_strongest_planets(state, 1)[0].ID)[0])
-    spread_sequence.child_nodes = [neutral_planet_check, do_we_have_planets, set_target, capture_sequence]
+    neutral_planet_check = Check(
+        lambda state: len([p for p in sorted(get_weakest_planets(state, 0, get_strongest_planets(state, 1)[0].ID), \
+            key=lambda p: get_production_factor(state, p.ID), reverse=True) if forecast_planet_owner(state, p) == 0]) > 0
+    )
+    set_target = SetVar(
+        blackboard, 
+        "capture_target", 
+        lambda state: [p for p in sorted(get_weakest_planets(state, 0, get_strongest_planets(state, 1)[0].ID), \
+            key=lambda p: get_production_factor(state, p.ID), reverse=True) if forecast_planet_owner(state, p) == 0][0]
+    )
+    spread_sequence.child_nodes = [do_we_have_planets, neutral_planet_check, set_target, capture_sequence]
 
     defense_sequence = Sequence(name='Defensive Strategy')
     defendable_planet_check = Check(multiple_planets_available)
@@ -188,8 +195,8 @@ def setup_behavior_tree():
     ]
 
     # root.child_nodes = [offensive_plan, spread_sequence, defense_sequence]
-    root.child_nodes = [steal_sequence, offensive_plan]
-    # root.child_nodes = [steal_sequence, spread_sequence, repeat_defense_strategy]
+    # root.child_nodes = [steal_sequence, offensive_plan]
+    root.child_nodes = [steal_sequence, spread_sequence, offensive_plan, defense_sequence]
 
 
     logging.info('\n' + root.tree_to_string())
