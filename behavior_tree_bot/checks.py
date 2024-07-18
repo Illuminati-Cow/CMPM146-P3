@@ -2,7 +2,7 @@ from functools import reduce
 import logging
 from statistics import median
 
-from planet_wars import PlanetWars, Planet
+from planet_wars import PlanetWars, Planet, get_blackboard
 from utility_functions import *
 
 def if_neutral_planet_available(state):
@@ -79,7 +79,9 @@ def is_planet_stealable(state:PlanetWars, blackboard: dict) -> bool:
     if ships > 0:
         return False
     
-    nearby_allies = get_nearest_planets(state, planet.ID, max(capture_time, arrival_turn_grace_period), 1)
+    nearby_allies = get_nearest_planets(state, planet.ID, capture_time + arrival_turn_grace_period, 1)
+    # Remove planets that will send ships too early
+    nearby_allies = [a for a in nearby_allies if state.distance(a.ID, planet.ID) > capture_time]
     total_stealing_force = reduce(lambda a, b: a + get_free_ships(state, b.ID, phaser_strength), nearby_allies, 0)
     logging.info(f"is_planet_stealable: total_stealing_force: {total_stealing_force}")
     
@@ -122,7 +124,8 @@ def is_planet_weaker_than_our_strength(state: PlanetWars, blackboard: dict) -> b
     return True
 
 
-def will_planet_be_captured_by_us(state: PlanetWars, blackboard: dict):
+def will_planet_be_captured_by_us(state: PlanetWars):
+    blackboard = get_blackboard()
     target = blackboard.get("capture_target", None)
     if target is None:
         logging.error("Capture Target is none in is_planet_weaker_than_our_strength check")

@@ -136,6 +136,9 @@ def issue_capture_order(state):
     if "order" is None:
         logging.error("Order is not set in issue_capture_order")
         return False
+    # Fix for program crashing with negative ships
+    if order.num_ships <= 0:
+        return False
     result = issue_order(state, order.source_id, order.dest_id, order.num_ships)
     logging.info(f"Order issued?: {result}, {order}")
     return result

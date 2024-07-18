@@ -26,6 +26,9 @@ def setup_behavior_tree():
     assert blackboard is not None
 
     capture_sequence = Sequence(name="Capture Behavior")
+    Order = namedtuple('Order', ['num_ships', 'source_id', 'dest_id', 'arrival_time'])
+    muster_phaser_strength = 0.65
+    capture_buffer = 15 # Num ships to buffer capture with. AKA How many ships minimum on a captured planet
     muster_sequence = Sequence(name="Muster Sequence", child_nodes=[
         Inverter(IsVarNull(blackboard, "strongest_ally_planets")),
         # Reset Values
@@ -37,19 +40,23 @@ def setup_behavior_tree():
                 PopFromStack(blackboard, "strongest_ally_planets", "muster_ally"),
                 Check(lambda state, blackboard: get_free_ships(state, blackboard["muster_ally"].ID) > 0, blackboard),
                 # Stop planning orders once we have enough ships to capture
-                Check(lambda state, blackboard: blackboard["attack_strength"] < forecast_ship_count(state, blackboard["capture_target"], blackboard["attack_max_arrival_time"]), blackboard),
+                Check(
+                    lambda state, blackboard: blackboard["attack_strength"] < capture_buffer + \
+                        forecast_ship_count(state, blackboard["capture_target"], blackboard["attack_max_arrival_time"]),
+                    blackboard
+                ),
                 Sequence(name="Setting Order Variables", child_nodes=[
                     SetVar(
                         blackboard,
                         "order", 
                         lambda state: \
                             Order(
-                                min(get_free_ships(state, blackboard["muster_ally"].ID, muster_phaser_strength), \
+                                max(0, min(get_free_ships(state, blackboard["muster_ally"].ID, muster_phaser_strength), \
                                     forecast_ship_count(
                                         state, blackboard["capture_target"], 
                                         state.distance(blackboard["capture_target"].ID, 
                                         blackboard["muster_ally"].ID)
-                                    ) - blackboard["attack_strength"] + 10),
+                                    ) - blackboard["attack_strength"] + capture_buffer)),
                                 blackboard["muster_ally"].ID,
                                 blackboard['capture_target'].ID,
                                 state.distance(blackboard["muster_ally"].ID, blackboard['capture_target'].ID)
@@ -90,14 +97,12 @@ def setup_behavior_tree():
             ])
         )
     ])
-    Order = namedtuple('Order', ['num_ships', 'source_id', 'dest_id', 'arrival_time'])
-    muster_phaser_strength = 0.65
     capture_sequence.child_nodes = [
         Inverter(IsVarNull(blackboard, "capture_target")),
         Sequence(name="Capture Sequence", child_nodes=[
             Sequence(name="Capturable Check", child_nodes=[
                 Check(is_planet_weaker_than_our_strength, blackboard),
-                Inverter(Check(will_planet_be_captured_by_us, blackboard))
+                Inverter(Check(will_planet_be_captured_by_us))
             ]),
             Sequence(name="Attack Sequence", child_nodes=[
                 SetVar(
@@ -164,7 +169,15 @@ def setup_behavior_tree():
         #Pops top item from attacked_neutral_planet stack into a blackboard element of attacked_neutral_planet.
         # Check(steal_stack_not_empty, blackboard),
         PopFromStack(blackboard, "attacked_neutral_planet_stack", "attacked_neutral_planet"), # Set planet to consider stealing
-        capture_stealable_planet
+        # Use a succeeder and a sequence so that:
+        # 1. If a pop from stack fails then it will exit the until failure loop
+        # 2. If the steal fails it will try again with the next possibly stealable planet
+        # 3. If it succeeds it will still try to steal more planets if possible since its high-reward low-risk
+        Succeeder(Sequence([
+            SetVar(blackboard, "capture_target", lambda state: blackboard["attacked_neutral_planet"]), # Set so it can be tested in Check as it expects it
+            Inverter(Check(will_planet_be_captured_by_us)),
+            capture_stealable_planet
+        ]))
     ]
     # continue_until_success
     capture_stealable_planet.child_nodes = [
@@ -175,7 +188,7 @@ def setup_behavior_tree():
     ]
 
     # root.child_nodes = [offensive_plan, spread_sequence, defense_sequence]
-    root.child_nodes = [offensive_plan]
+    root.child_nodes = [steal_sequence, offensive_plan]
     # root.child_nodes = [steal_sequence, spread_sequence, repeat_defense_strategy]
 
 
