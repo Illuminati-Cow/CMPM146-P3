@@ -117,19 +117,20 @@ def forecast_planet_owner(state: PlanetWars, planet: Planet) -> int:
     attacking_fleets = get_attacking_fleets(state, planet_id=planet.ID)
     arriving_fleets = [fleet for fleet in attacking_fleets]
     arriving_fleets.sort(key=lambda fleet: fleet.turns_remaining, reverse=True)
-
+    logging.info(f"forecast_planet_owner: arriving_fleets {arriving_fleets}")
+    
     if not arriving_fleets:
         return planet.owner
     
     last_arrival = arriving_fleets[0].turns_remaining
-    for turn in range(last_arrival):
+    for turn in range(last_arrival+1):
         ship_count += planet.growth_rate if current_owner != 0 else 0
         fleets = []
         while arriving_fleets and arriving_fleets[-1].turns_remaining == turn:
             fleets.append(arriving_fleets.pop())
         ally_ship_count = reduce(lambda a, b: a + b.num_ships, [f for f in fleets if f.owner == 1], 0)
         enemy_ship_count = reduce(lambda a, b: a + b.num_ships, [f for f in fleets if f.owner == 2], 0)
-        match planet.owner:
+        match current_owner:
             case 0:
                 ship_count -= abs(ally_ship_count - enemy_ship_count)
                 if ship_count > 0:

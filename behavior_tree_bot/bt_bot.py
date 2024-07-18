@@ -44,7 +44,12 @@ def setup_behavior_tree():
                         "order", 
                         lambda state: \
                             Order(
-                                get_free_ships(state, blackboard["muster_ally"].ID, muster_phaser_strength), 
+                                min(get_free_ships(state, blackboard["muster_ally"].ID, muster_phaser_strength), \
+                                    forecast_ship_count(
+                                        state, blackboard["capture_target"], 
+                                        state.distance(blackboard["capture_target"].ID, 
+                                        blackboard["muster_ally"].ID)
+                                    ) - blackboard["attack_strength"] + 10),
                                 blackboard["muster_ally"].ID,
                                 blackboard['capture_target'].ID,
                                 state.distance(blackboard["muster_ally"].ID, blackboard['capture_target'].ID)
@@ -170,7 +175,7 @@ def setup_behavior_tree():
     ]
 
     # root.child_nodes = [offensive_plan, spread_sequence, defense_sequence]
-    root.child_nodes = [offensive_plan, steal_sequence, spread_sequence, defense_sequence]
+    root.child_nodes = [offensive_plan]
     # root.child_nodes = [steal_sequence, spread_sequence, repeat_defense_strategy]
 
 
