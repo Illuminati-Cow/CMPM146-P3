@@ -1,5 +1,7 @@
 from copy import deepcopy
+from typing import Callable, Optional, Any, Dict
 import logging
+from planet_wars import PlanetWars
 
 
 def log_execution(fn):
@@ -154,7 +156,7 @@ class Failer(Decorator):
     
 ############################### Leaf Nodes ##################################
 class Check(Node):
-    def __init__(self, check_function, blackboard=None):
+    def __init__(self, check_function: Callable[[PlanetWars, Optional[dict]], bool], blackboard=None):
         self.check_function = check_function
         self.blackboard = blackboard
 

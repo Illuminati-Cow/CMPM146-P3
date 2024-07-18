@@ -125,13 +125,22 @@ def setup_behavior_tree():
     # TEST REMOVE SUCCEEDER!!!!!!!!!!!! 
     largest_fleet_check = Succeeder(Check(have_largest_fleet))
     enemy_planets_available_check = Check(enemy_planets_available)
-    # Out of order so that it works
+    selection_loop = Sequence(name="Selection Loop", child_nodes=[
+        SetVar(blackboard, "capture_target", lambda state: None),
+        SetVar(blackboard, "target_stack", lambda state: get_most_valuable_enemy_planets(state)[::-1]),
+        Inverter(UntilFailure(Sequence([
+                PopFromStack(blackboard, "target_stack", "capture_target"),
+                Inverter(Check(is_planet_weaker_than_our_strength, blackboard)),
+            ])
+        )),
+        Check(lambda state: blackboard["capture_target"] is not None)
+    ])
     attack = capture_sequence
     # attack = Action(attack_weakest_enemy_planet)
     offensive_plan.child_nodes = [
         largest_fleet_check,
         enemy_planets_available_check,
-        SetVar(blackboard, "capture_target", lambda state: get_weakest_planets(state, 2)[0]),
+        selection_loop,
         attack
     ]
 

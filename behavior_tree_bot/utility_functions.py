@@ -244,9 +244,9 @@ def get_weakest_planets(state: PlanetWars, player_id: int, planet_id: int = None
     return planets
 
 
-def get_strongest_planets(state: PlanetWars, player_id: int, planet_id: int = None, cutoff: int = float('INF')) -> List[Planet]:
+def get_strongest_planets(state: PlanetWars, player_id: int, planet_id: int = None, cutoff: int = -float('INF')) -> List[Planet]:
     """
-    Return a list of planets owned by a player that have under the cutoff number of ships, sorted with the strongest first.
+    Return a list of planets owned by a player that have at or over the cutoff number of ships, sorted with the strongest first.
     
     Parameters:
         state (PlanetWars): The current game state
@@ -257,7 +257,7 @@ def get_strongest_planets(state: PlanetWars, player_id: int, planet_id: int = No
     Returns:
         List[Planet]: A sorted list of the strongest planets owned by the player
     """
-    return get_weakest_planets(state, player_id, planet_id, cutoff)[::-1]
+    return [p for p in get_weakest_planets(state, player_id, planet_id) if p.num_ships >= cutoff][::-1]
 
 
 def max_reinforcements(state: PlanetWars, planet_id: int, num_turns: int) -> int:
@@ -354,3 +354,18 @@ def get_priority(state: PlanetWars, planet: Planet, attacker: Fleet):
     # sorted_for_growth_rate = starting_options.sort(key=lambda planet: planet.growth_rate, reverse=True)
 
     #arriving_fleets.sort(key=lambda fleet: fleet.turns_remaining)
+
+def get_most_valuable_enemy_planets(state: PlanetWars) -> List[Planet]:
+    production_planets = sorted(state.enemy_planets(), key=lambda planet: get_production_factor(state, planet.ID), reverse=True)
+    production_planets = [p for p in production_planets if forecast_planet_owner(state, p) != 1]
+    our_strongest = get_strongest_planets(state, 1)
+    best_planets = []
+    for enemy_planet in production_planets:
+        value = 0
+        for our_planet in our_strongest:
+            distance = state.distance(enemy_planet.ID, our_planet.ID)
+            value += 0.4 * get_production_factor(state, our_planet.ID) + 0.4 * 1 / (1 + enemy_planet.num_ships) + 0.2 * distance
+        best_planets.append((enemy_planet, value))
+    best_planets.sort(key=lambda x: x[1], reverse=True)
+    return [planet for planet, _ in best_planets]
+
