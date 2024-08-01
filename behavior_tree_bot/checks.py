@@ -3,7 +3,7 @@ import logging
 from statistics import median
 
 from planet_wars import PlanetWars, Planet, get_blackboard
-from utility_functions import *
+from behaviors import *
 
 def if_neutral_planet_available(state):
     return any(state.neutral_planets())

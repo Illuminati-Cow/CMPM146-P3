@@ -1,0 +1,27 @@
+Selector: High Level Ordering of Strategies
+| Sequence: Stealing Strategy
+| | <behavior_tree_bot.bt_nodes.SetVar object at 0x0000021BC9ACDDE0>
+| | UntilFailure: Sequence: Stealing Iteration
+| Sequence: Offensive Strategy
+| | Succeeder: Check: have_largest_fleet
+| | Check: enemy_planets_available
+| | <behavior_tree_bot.bt_nodes.SetVar object at 0x0000021BC9ACD960>
+| | Sequence: Capture Behavior
+| | | Inverter: <behavior_tree_bot.bt_nodes.IsVarNull object at 0x0000021BC9ACD3F0>
+| | | Sequence: Capture Sequence
+| | | | Sequence: Capturable Check
+| | | | | Check: is_planet_weaker_than_our_strength
+| | | | | Inverter: Check: will_planet_be_captured_by_us
+| | | | Sequence: Attack Sequence
+| | | | | <behavior_tree_bot.bt_nodes.SetVar object at 0x0000021BC9ACD630>
+| | | | | Sequence: Muster Sequence
+| | | | | | Inverter: <behavior_tree_bot.bt_nodes.IsVarNull object at 0x0000021BC9ACCB80>
+| | | | | | <behavior_tree_bot.bt_nodes.SetVar object at 0x0000021BC9ACCE80>
+| | | | | | <behavior_tree_bot.bt_nodes.SetVar object at 0x0000021BC9ACCD90>
+| | | | | | <behavior_tree_bot.bt_nodes.SetVar object at 0x0000021BC9ACCD30>
+| | | | | | Succeeder: UntilFailure: 
+| | | | | | Check: <lambda>
+| | | | | | Check: <lambda>
+| | | | | Sequence: Order Sequence
+| | | | | | <behavior_tree_bot.bt_nodes.SetVar object at 0x0000021BC9ACD120>
+| | | | | | UntilFailure: Sequence: Issue Order Sequence
